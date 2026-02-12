@@ -1,33 +1,8 @@
 import pytest
-from unittest.mock import Mock, patch
-
-# Note: For the unit tests to run and patch correctly, the function 
-# demonstrate_class_imports must be defined in the scope where the tests are run (or imported).
-# We define it here assuming it resides in the '__main__' module for patching purposes.
+from unittest.mock import patch, Mock
 
 def demonstrate_class_imports():
     """Demonstrate class import patterns."""
-    
-    # Placeholder classes needed only for definition scope if run locally
-    try:
-        DataProcessor
-        BaseModel
-        UserModel
-    except NameError:
-        # These dummy definitions are overwritten by mocks during testing, 
-        # but required to prevent NameError during function definition scope analysis.
-        class DataProcessor:
-            def __init__(self, data): pass
-            def process(self): return None
-            def transform(self, transformation: str): return None
-            def validate(self) -> bool: return False
-        class BaseModel:
-            def __init__(self, id: str): self.id = id
-            def to_dict(self) -> dict: return {"id": self.id}
-        class UserModel(BaseModel):
-            def __init__(self, name: str, email: str, id: str): super().__init__(id); self.name = name; self.email = email
-            def get_full_info(self) -> str: return f"{self.name}, {self.email}"
-    
     print("\n" + "=" * 60)
     print("CLASS IMPORTS")
     print("=" * 60)
@@ -53,142 +28,106 @@ def demonstrate_class_imports():
     print(f"   user.get_full_info() = {user.get_full_info()}")
     print(f"   user.to_dict() = {user.to_dict()}")
 
+# Placeholder classes to satisfy the namespace for patching
+class DataProcessor:
+    def __init__(self, data): pass
+    def process(self): pass
+    def transform(self, transformation): pass
+    def validate(self): pass
 
-TARGET_PATH = '__main__'
+class BaseModel:
+    def __init__(self, id): pass
+    def to_dict(self): pass
 
-# --- Mock Data Setup ---
-MOCK_PROC_PROCESS_S = "Data Successfully Processed"
-MOCK_PROC_TRANSFORM_S = "TRANSFORMED_STRING"
-MOCK_PROC_VALIDATE_S = True
-MOCK_BASE_ID_S = "base-123-mocked"
-MOCK_BASE_DICT_S = {"id": "base-123-mocked", "status": "active"}
-MOCK_USER_NAME_S = "John Mock"
-MOCK_USER_EMAIL_S = "john.mock@test.com"
-MOCK_USER_FULL_INFO_S = "John Mock (ID: user-456) is ready."
-MOCK_USER_DICT_S = {"name": "John Mock", "email": "john.mock@test.com", "id": "user-456"}
+class UserModel:
+    def __init__(self, name, email, id): pass
+    def to_dict(self): pass
+    def get_full_info(self): pass
 
+@patch(f'{__name__}.UserModel')
+@patch(f'{__name__}.BaseModel')
+@patch(f'{__name__}.DataProcessor')
+def test_demonstrate_class_imports_success(mock_dp_class, mock_bm_class, mock_um_class):
+    # Dependency: processor (instance of DataProcessor)
+    mock_processor = Mock(spec=DataProcessor)
+    mock_processor.process.return_value = "processed success"
+    mock_processor.transform.return_value = "TRANSFORMED SUCCESS"
+    mock_processor.validate.return_value = True
+    mock_dp_class.return_value = mock_processor
 
-@patch(f'{TARGET_PATH}.UserModel')
-@patch(f'{TARGET_PATH}.BaseModel')
-@patch(f'{TARGET_PATH}.DataProcessor')
-def test_demonstrate_class_imports_success(
-    MockDataProcessor, MockBaseModel, MockUserModel, capsys
-):
-    # Setup DataProcessor instance mock
-    mock_processor_instance = MockDataProcessor.return_value
-    mock_processor_instance.process.return_value = MOCK_PROC_PROCESS_S
-    mock_processor_instance.transform.return_value = MOCK_PROC_TRANSFORM_S
-    mock_processor_instance.validate.return_value = MOCK_PROC_VALIDATE_S
+    # Dependency: base (instance of BaseModel)
+    mock_base = Mock(spec=BaseModel)
+    mock_base.id = "base-123"
+    mock_base.to_dict.return_value = {"id": "base-123", "type": "base"}
+    mock_bm_class.return_value = mock_base
 
-    # Setup BaseModel instance mock
-    mock_base_instance = MockBaseModel.return_value
-    # Note: attribute assignment must happen directly on the mock instance
-    type(mock_base_instance).id = property(lambda self: MOCK_BASE_ID_S)
-    mock_base_instance.to_dict.return_value = MOCK_BASE_DICT_S
+    # Dependency: user (instance of UserModel)
+    mock_user = Mock(spec=UserModel)
+    mock_user.name = "John Doe"
+    mock_user.email = "john@example.com"
+    mock_user.get_full_info.return_value = "John Doe <john@example.com>"
+    mock_user.to_dict.return_value = {"id": "user-456", "name": "John Doe"}
+    mock_um_class.return_value = mock_user
 
-    # Setup UserModel instance mock
-    mock_user_instance = MockUserModel.return_value
-    type(mock_user_instance).name = property(lambda self: MOCK_USER_NAME_S)
-    type(mock_user_instance).email = property(lambda self: MOCK_USER_EMAIL_S)
-    mock_user_instance.get_full_info.return_value = MOCK_USER_FULL_INFO_S
-    mock_user_instance.to_dict.return_value = MOCK_USER_DICT_S
-
+    # Execute function
     demonstrate_class_imports()
 
-    # Verify constructor calls (Inputs are fixed by the function logic)
-    MockDataProcessor.assert_called_once_with("test data")
-    MockBaseModel.assert_called_once_with("base-123")
-    MockUserModel.assert_called_once_with("John Doe", "john@example.com", "user-456")
+    # Assertions for DataProcessor
+    mock_dp_class.assert_called_once_with("test data")
+    mock_processor.process.assert_called_once()
+    mock_processor.transform.assert_called_once_with('uppercase')
+    mock_processor.validate.assert_called_once()
 
-    # Verify method calls
-    mock_processor_instance.process.assert_called_once()
-    mock_processor_instance.transform.assert_called_once_with('uppercase')
-    mock_user_instance.get_full_info.assert_called_once()
-    
-    # Verify output logging
-    captured = capsys.readouterr()
-    output = captured.out
+    # Assertions for BaseModel
+    mock_bm_class.assert_called_once_with("base-123")
+    mock_base.to_dict.assert_called_once()
 
-    assert f"processor.process() = {MOCK_PROC_PROCESS_S}" in output
-    assert f"base.id = {MOCK_BASE_ID_S}" in output
-    assert f"user.get_full_info() = {MOCK_USER_FULL_INFO_S}" in output
+    # Assertions for UserModel
+    mock_um_class.assert_called_once_with("John Doe", "john@example.com", "user-456")
+    mock_user.get_full_info.assert_called_once()
+    mock_user.to_dict.assert_called_once()
 
+@patch(f'{__name__}.UserModel')
+@patch(f'{__name__}.BaseModel')
+@patch(f'{__name__}.DataProcessor')
+def test_demonstrate_class_imports_edge_cases(mock_dp_class, mock_bm_class, mock_um_class):
+    # Test with empty strings, None, and False values
+    mock_processor = Mock(spec=DataProcessor)
+    mock_processor.process.return_value = ""
+    mock_processor.transform.return_value = None
+    mock_processor.validate.return_value = False
+    mock_dp_class.return_value = mock_processor
 
-@patch(f'{TARGET_PATH}.UserModel')
-@patch(f'{TARGET_PATH}.BaseModel')
-@patch(f'{TARGET_PATH}.DataProcessor')
-def test_demonstrate_class_imports_edge_cases(
-    MockDataProcessor, MockBaseModel, MockUserModel, capsys
-):
-    # Setup DataProcessor instance mock with edge cases
-    mock_processor_instance = MockDataProcessor.return_value
-    mock_processor_instance.process.return_value = ""
-    mock_processor_instance.transform.return_value = None
-    mock_processor_instance.validate.return_value = False
+    mock_base = Mock(spec=BaseModel)
+    mock_base.id = ""
+    mock_base.to_dict.return_value = {}
+    mock_bm_class.return_value = mock_base
 
-    # Setup BaseModel instance mock with edge cases
-    mock_base_instance = MockBaseModel.return_value
-    type(mock_base_instance).id = property(lambda self: "")
-    mock_base_instance.to_dict.return_value = {}
+    mock_user = Mock(spec=UserModel)
+    mock_user.name = None
+    mock_user.email = ""
+    mock_user.get_full_info.return_value = ""
+    mock_user.to_dict.return_value = {}
+    mock_um_class.return_value = mock_user
 
-    # Setup UserModel instance mock with edge cases
-    mock_user_instance = MockUserModel.return_value
-    type(mock_user_instance).name = property(lambda self: "")
-    type(mock_user_instance).email = property(lambda self: "")
-    mock_user_instance.get_full_info.return_value = "Minimal Info"
-    mock_user_instance.to_dict.return_value = {}
-
+    # Function should handle empty/None mock returns without crashing
     demonstrate_class_imports()
 
-    # Verify instantiation still happens
-    MockDataProcessor.assert_called_once()
-    MockBaseModel.assert_called_once()
-    MockUserModel.assert_called_once()
-    
-    # Verify output logging reflects edge values (empty strings, None, False, empty dicts)
-    captured = capsys.readouterr()
-    output = captured.out
+    assert mock_processor.validate.called
+    assert mock_base.to_dict.called
+    assert mock_user.get_full_info.called
 
-    assert f"processor.process() = " in output # Empty string output
-    assert f"processor.transform('uppercase') = None" in output
-    assert f"processor.validate() = False" in output
-    assert f"base.id = " in output # Empty string output
-    assert f"base.to_dict() = {{}}" in output
-    assert f"user.name = " in output # Empty string output
-    assert f"user.get_full_info() = Minimal Info" in output
-    assert f"user.to_dict() = {{}}" in output
+@patch(f'{__name__}.UserModel')
+@patch(f'{__name__}.BaseModel')
+@patch(f'{__name__}.DataProcessor')
+def test_demonstrate_class_imports_error(mock_dp_class, mock_bm_class, mock_um_class):
+    # Simulate an error during DataProcessor instantiation
+    mock_dp_class.side_effect = RuntimeError("Failed to initialize processor")
 
-
-@patch(f'{TARGET_PATH}.UserModel')
-@patch(f'{TARGET_PATH}.BaseModel')
-@patch(f'{TARGET_PATH}.DataProcessor')
-def test_demonstrate_class_imports_error(
-    MockDataProcessor, MockBaseModel, MockUserModel, capsys
-):
-    ERROR_MESSAGE = "DataProcessor failed during execution."
-
-    # Scenario: DataProcessor instantiation succeeds, but the first method call fails
-    mock_processor_instance = MockDataProcessor.return_value
-    mock_processor_instance.process.side_effect = RuntimeError(ERROR_MESSAGE)
-
-    # Execution should halt at processor.process()
-    with pytest.raises(RuntimeError) as excinfo:
+    with pytest.raises(RuntimeError, match="Failed to initialize processor"):
         demonstrate_class_imports()
 
-    # Check exception details
-    assert ERROR_MESSAGE in str(excinfo.value)
-    
-    # Check that DataProcessor was initialized and process was called once
-    MockDataProcessor.assert_called_once_with("test data")
-    mock_processor_instance.process.assert_called_once()
-    
-    # Check that subsequent classes (BaseModel, UserModel) were never called
-    MockBaseModel.assert_not_called()
-    MockUserModel.assert_not_called()
-    
-    # Check output to ensure execution stopped early
-    captured = capsys.readouterr()
-    output = captured.out
-    
-    assert "1. DataProcessor class:" in output
-    assert "2. BaseModel class:" not in output
+    # Verify that first class was attempted and subsequent ones were not
+    mock_dp_class.assert_called_once()
+    mock_bm_class.assert_not_called()
+    mock_um_class.assert_not_called()

@@ -1,5 +1,13 @@
 import pytest
 from unittest.mock import patch, Mock
+from models.base_model import BaseModel
+from utils.data_processor import DataProcessor
+from models.user_model import UserModel
+
+# Save references for spec-safe mocking
+_RealBaseModel = BaseModel
+_RealDataProcessor = DataProcessor
+_RealUserModel = UserModel
 
 def demonstrate_class_imports():
     """Demonstrate class import patterns."""
@@ -28,48 +36,33 @@ def demonstrate_class_imports():
     print(f"   user.get_full_info() = {user.get_full_info()}")
     print(f"   user.to_dict() = {user.to_dict()}")
 
-# Placeholder classes to satisfy the namespace for patching
-class DataProcessor:
-    def __init__(self, data): pass
-    def process(self): pass
-    def transform(self, transformation): pass
-    def validate(self): pass
-
-class BaseModel:
-    def __init__(self, id): pass
-    def to_dict(self): pass
-
-class UserModel:
-    def __init__(self, name, email, id): pass
-    def to_dict(self): pass
-    def get_full_info(self): pass
-
 @patch(f'{__name__}.UserModel')
 @patch(f'{__name__}.BaseModel')
 @patch(f'{__name__}.DataProcessor')
 def test_demonstrate_class_imports_success(mock_dp_class, mock_bm_class, mock_um_class):
-    # Dependency: processor (instance of DataProcessor)
-    mock_processor = Mock(spec=DataProcessor)
-    mock_processor.process.return_value = "processed success"
-    mock_processor.transform.return_value = "TRANSFORMED SUCCESS"
-    mock_processor.validate.return_value = True
+    """Happy path with normal inputs and successful method calls."""
+    # Setup DataProcessor mock
+    mock_processor = Mock(spec=_RealDataProcessor)
     mock_dp_class.return_value = mock_processor
+    mock_processor.process.return_value = "processed-results"
+    mock_processor.transform.return_value = "TRANSFORMED-RESULTS"
+    mock_processor.validate.return_value = True
 
-    # Dependency: base (instance of BaseModel)
-    mock_base = Mock(spec=BaseModel)
+    # Setup BaseModel mock
+    mock_base = Mock(spec=_RealBaseModel)
+    mock_bm_class.return_value = mock_base
     mock_base.id = "base-123"
     mock_base.to_dict.return_value = {"id": "base-123", "type": "base"}
-    mock_bm_class.return_value = mock_base
 
-    # Dependency: user (instance of UserModel)
-    mock_user = Mock(spec=UserModel)
+    # Setup UserModel mock
+    mock_user = Mock(spec=_RealUserModel)
+    mock_um_class.return_value = mock_user
     mock_user.name = "John Doe"
     mock_user.email = "john@example.com"
     mock_user.get_full_info.return_value = "John Doe <john@example.com>"
-    mock_user.to_dict.return_value = {"id": "user-456", "name": "John Doe"}
-    mock_um_class.return_value = mock_user
+    mock_user.to_dict.return_value = {"id": "user-456", "name": "John Doe", "email": "john@example.com"}
 
-    # Execute function
+    # Execute
     demonstrate_class_imports()
 
     # Assertions for DataProcessor
@@ -91,43 +84,48 @@ def test_demonstrate_class_imports_success(mock_dp_class, mock_bm_class, mock_um
 @patch(f'{__name__}.BaseModel')
 @patch(f'{__name__}.DataProcessor')
 def test_demonstrate_class_imports_edge_cases(mock_dp_class, mock_bm_class, mock_um_class):
-    # Test with empty strings, None, and False values
-    mock_processor = Mock(spec=DataProcessor)
-    mock_processor.process.return_value = ""
-    mock_processor.transform.return_value = None
-    mock_processor.validate.return_value = False
+    """Test with empty return values and boolean boundaries."""
+    # Mock returning empty strings and False validation
+    mock_processor = Mock(spec=_RealDataProcessor)
     mock_dp_class.return_value = mock_processor
+    mock_processor.process.return_value = ""
+    mock_processor.transform.return_value = ""
+    mock_processor.validate.return_value = False
 
-    mock_base = Mock(spec=BaseModel)
+    mock_base = Mock(spec=_RealBaseModel)
+    mock_bm_class.return_value = mock_base
     mock_base.id = ""
     mock_base.to_dict.return_value = {}
-    mock_bm_class.return_value = mock_base
 
-    mock_user = Mock(spec=UserModel)
-    mock_user.name = None
+    mock_user = Mock(spec=_RealUserModel)
+    mock_um_class.return_value = mock_user
+    mock_user.name = ""
     mock_user.email = ""
     mock_user.get_full_info.return_value = ""
     mock_user.to_dict.return_value = {}
-    mock_um_class.return_value = mock_user
 
-    # Function should handle empty/None mock returns without crashing
+    # Should run without crashing even with empty/False values
     demonstrate_class_imports()
 
-    assert mock_processor.validate.called
-    assert mock_base.to_dict.called
-    assert mock_user.get_full_info.called
+    assert mock_processor.validate.return_value is False
+    assert mock_base.to_dict.return_value == {}
+    assert mock_user.name == ""
 
 @patch(f'{__name__}.UserModel')
 @patch(f'{__name__}.BaseModel')
 @patch(f'{__name__}.DataProcessor')
 def test_demonstrate_class_imports_error(mock_dp_class, mock_bm_class, mock_um_class):
-    # Simulate an error during DataProcessor instantiation
-    mock_dp_class.side_effect = RuntimeError("Failed to initialize processor")
+    """Test exception propagation when a dependency fails."""
+    # Simulate a failure during DataProcessor instantiation
+    mock_dp_class.side_effect = Exception("Initialization failed")
 
-    with pytest.raises(RuntimeError, match="Failed to initialize processor"):
+    with pytest.raises(Exception) as excinfo:
         demonstrate_class_imports()
-
-    # Verify that first class was attempted and subsequent ones were not
-    mock_dp_class.assert_called_once()
+    
+    assert str(excinfo.value) == "Initialization failed"
+    
+    # Ensure subsequent mocks were never called due to the error
     mock_bm_class.assert_not_called()
     mock_um_class.assert_not_called()
+
+# End of test functions

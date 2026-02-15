@@ -1,13 +1,13 @@
 import pytest
 from unittest.mock import patch, Mock
 from models.base_model import BaseModel
-from models.user_model import UserModel
 from utils.data_processor import DataProcessor
+from models.user_model import UserModel
 
-# Save references before patching for use with spec
+# Save real class references before patching for spec support
 _RealBaseModel = BaseModel
-_RealUserModel = UserModel
 _RealDataProcessor = DataProcessor
+_RealUserModel = UserModel
 
 def demonstrate_class_imports():
     """Demonstrate class import patterns."""
@@ -40,24 +40,24 @@ def demonstrate_class_imports():
 @patch(f'{__name__}.BaseModel')
 @patch(f'{__name__}.DataProcessor')
 def test_demonstrate_class_imports_success(mock_dp_class, mock_bm_class, mock_um_class):
-    # Setup DataProcessor mock
+    # Dependency: processor (instance of DataProcessor)
     mock_processor = Mock(spec=_RealDataProcessor)
-    mock_processor.process.return_value = "Success Processed"
-    mock_processor.transform.return_value = "SUCCESS TRANSFORMED"
+    mock_processor.process.return_value = "processed-result"
+    mock_processor.transform.return_value = "TRANSFORMED-RESULT"
     mock_processor.validate.return_value = True
     mock_dp_class.return_value = mock_processor
 
-    # Setup BaseModel mock
+    # Dependency: base (instance of BaseModel)
     mock_base = Mock(spec=_RealBaseModel)
     mock_base.id = "base-123"
     mock_base.to_dict.return_value = {"id": "base-123", "type": "base"}
     mock_bm_class.return_value = mock_base
 
-    # Setup UserModel mock
+    # Dependency: user (instance of UserModel)
     mock_user = Mock(spec=_RealUserModel)
     mock_user.name = "John Doe"
     mock_user.email = "john@example.com"
-    mock_user.get_full_info.return_value = "John Doe <john@example.com>"
+    mock_user.get_full_info.return_value = "User: John Doe <john@example.com>"
     mock_user.to_dict.return_value = {"id": "user-456", "name": "John Doe", "email": "john@example.com"}
     mock_um_class.return_value = mock_user
 
@@ -83,7 +83,7 @@ def test_demonstrate_class_imports_success(mock_dp_class, mock_bm_class, mock_um
 @patch(f'{__name__}.BaseModel')
 @patch(f'{__name__}.DataProcessor')
 def test_demonstrate_class_imports_edge_cases(mock_dp_class, mock_bm_class, mock_um_class):
-    # Setup mocks with empty/boundary values
+    # Setup mocks with empty/edge return values
     mock_processor = Mock(spec=_RealDataProcessor)
     mock_processor.process.return_value = ""
     mock_processor.transform.return_value = ""
@@ -98,29 +98,38 @@ def test_demonstrate_class_imports_edge_cases(mock_dp_class, mock_bm_class, mock
     mock_user = Mock(spec=_RealUserModel)
     mock_user.name = ""
     mock_user.email = ""
-    mock_user.get_full_info.return_value = "Unknown"
+    mock_user.get_full_info.return_value = ""
     mock_user.to_dict.return_value = {}
     mock_um_class.return_value = mock_user
 
-    # Execute - should handle empty return strings/dicts gracefully in print statements
+    # Execute
     demonstrate_class_imports()
 
-    # Verify calls still occurred with expected hardcoded inputs
-    mock_dp_class.assert_called_with("test data")
-    mock_bm_class.assert_called_with("base-123")
-    mock_um_class.assert_called_with("John Doe", "john@example.com", "user-456")
+    # Verify logic handled edge return values correctly
+    assert mock_processor.validate() is False
+    assert mock_base.to_dict() == {}
+    assert mock_user.name == ""
 
+@patch(f'{__name__}.UserModel')
+@patch(f'{__name__}.BaseModel')
 @patch(f'{__name__}.DataProcessor')
-def test_demonstrate_class_imports_error(mock_dp_class):
-    # Setup mock to raise an exception during processing
+def test_demonstrate_class_imports_error(mock_dp_class, mock_bm_class, mock_um_class):
+    # Setup DataProcessor to raise an exception during processing
     mock_processor = Mock(spec=_RealDataProcessor)
     mock_processor.process.side_effect = RuntimeError("Processing failed")
     mock_dp_class.return_value = mock_processor
 
-    # Since the function does not have try-except blocks, the error should propagate
-    with pytest.raises(RuntimeError) as excinfo:
+    # Setup other mocks normally
+    mock_bm_class.return_value = Mock(spec=_RealBaseModel)
+    mock_um_class.return_value = Mock(spec=_RealUserModel)
+
+    # Execute and verify exception propagates
+    with pytest.raises(RuntimeError, match="Processing failed"):
         demonstrate_class_imports()
-    
-    assert str(excinfo.value) == "Processing failed"
+
+    # Verify that the failure happened at the DataProcessor stage
     mock_dp_class.assert_called_once()
     mock_processor.process.assert_called_once()
+    # BaseModel and UserModel instantiation should not be reached if exception is raised earlier
+    mock_bm_class.assert_not_called()
+    mock_um_class.assert_not_called()

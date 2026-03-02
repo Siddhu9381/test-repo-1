@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import Mock
+from unittest.mock import MagicMock, patch
 
 class DataProcessor:
     def __init__(self, data):
@@ -12,40 +12,48 @@ class DataProcessor:
         self.data = data
 
 def test_init_success():
-    # Happy path: Test initialization with valid data object
-    # Using Mock to represent an external data structure
-    mock_payload = Mock()
+    """Happy path with normal inputs."""
+    # Create realistic mock data
+    mock_payload = {
+        "id": 101,
+        "payload": "sensor_data",
+        "values": [22.5, 23.1, 21.8]
+    }
+    
+    # Initialize the processor
     processor = DataProcessor(data=mock_payload)
     
+    # Assertions
     assert processor.data == mock_payload
-    assert processor.data is mock_payload
+    assert isinstance(processor.data, dict)
+    assert processor.data["id"] == 101
 
 def test_init_edge_cases():
-    # Edge cases: None, empty values, and numeric boundaries
-    # Test initialization with None
+    """None, empty values, boundaries."""
+    # Test with None
     processor_none = DataProcessor(None)
     assert processor_none.data is None
     
-    # Test initialization with an empty string
-    processor_empty_str = DataProcessor("")
-    assert processor_empty_str.data == ""
+    # Test with empty list
+    processor_list = DataProcessor([])
+    assert processor_list.data == []
     
-    # Test initialization with an empty list
-    processor_empty_list = DataProcessor([])
-    assert processor_empty_list.data == []
+    # Test with empty string
+    processor_str = DataProcessor("")
+    assert processor_str.data == ""
     
-    # Test initialization with numeric zero
+    # Test with integer zero
     processor_zero = DataProcessor(0)
     assert processor_zero.data == 0
 
 def test_init_error():
-    # Error paths: Argument count validation
-    # Test instantiation with missing required 'data' argument
+    """Exception handling and error paths."""
+    # Test TypeError when initialized without the required 'data' argument
     with pytest.raises(TypeError) as excinfo:
         DataProcessor()
     assert "missing 1 required positional argument" in str(excinfo.value)
     
-    # Test instantiation with too many arguments
+    # Test TypeError when initialized with unexpected keyword arguments
     with pytest.raises(TypeError) as excinfo:
-        DataProcessor("data_one", "data_two")
-    assert "takes 2 positional arguments but 3 were given" in str(excinfo.value)
+        DataProcessor(data="test", extra_arg="unexpected")
+    assert "unexpected keyword argument" in str(excinfo.value)

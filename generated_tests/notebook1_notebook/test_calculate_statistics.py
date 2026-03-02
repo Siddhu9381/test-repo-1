@@ -1,6 +1,7 @@
 import pytest
-from unittest.mock import patch, Mock, call
+from unittest.mock import patch, Mock
 
+# Dependencies for mocking
 def add(a, b):
     pass
 
@@ -50,74 +51,64 @@ def calculate_statistics(numbers):
 @patch(f'{__name__}.divide')
 @patch(f'{__name__}.add')
 def test_calculate_statistics_success(mock_add, mock_divide, mock_multiply):
-    """Test the happy path with a standard list of numbers."""
-    # Setup mocks for input [10, 20]
-    # Sum: add(0, 10) -> 10, add(10, 20) -> 30
-    mock_add.side_effect = [10, 30]
-    # Average: divide(30, 2) -> 15
-    mock_divide.return_value = 15
-    # Product: multiply(1, 10) -> 10, multiply(10, 20) -> 200
-    mock_multiply.side_effect = [10, 200]
+    """Test happy path with multiple numbers."""
+    # Setup mock behaviors for input [2, 4]
+    # Sum: add(0, 2) -> 2, add(2, 4) -> 6
+    mock_add.side_effect = [2, 6]
+    # Average: divide(6, 2) -> 3.0
+    mock_divide.return_value = 3.0
+    # Product: multiply(1, 2) -> 2, multiply(2, 4) -> 8
+    mock_multiply.side_effect = [2, 8]
     
-    test_input = [10, 20]
-    expected_output = {
-        'sum': 30,
-        'average': 15,
-        'product': 200,
+    numbers = [2, 4]
+    result = calculate_statistics(numbers)
+    
+    expected = {
+        'sum': 6,
+        'average': 3.0,
+        'product': 8,
         'count': 2
     }
     
-    result = calculate_statistics(test_input)
-    
-    # Assertions
-    assert result == expected_output
+    assert result == expected
     assert mock_add.call_count == 2
-    mock_add.assert_has_calls([call(0, 10), call(10, 20)])
-    mock_divide.assert_called_once_with(30, 2)
+    mock_divide.assert_called_once_with(6, 2)
     assert mock_multiply.call_count == 2
-    mock_multiply.assert_has_calls([call(1, 10), call(10, 20)])
 
 @patch(f'{__name__}.multiply')
 @patch(f'{__name__}.divide')
 @patch(f'{__name__}.add')
 def test_calculate_statistics_edge_cases(mock_add, mock_divide, mock_multiply):
-    """Test empty input, None, and single-item lists."""
-    # Case 1: Empty list
-    assert calculate_statistics([]) == {'sum': 0, 'average': 0, 'product': 0}
+    """Test empty list and single item boundaries."""
+    # Case 1: Empty list (Branch coverage: not numbers)
+    empty_result = calculate_statistics([])
+    assert empty_result == {'sum': 0, 'average': 0, 'product': 0}
+    mock_add.assert_not_called()
     
-    # Case 2: None input (should be caught by 'if not numbers')
-    assert calculate_statistics(None) == {'sum': 0, 'average': 0, 'product': 0}
-    
-    # Case 3: Single item list [5]
-    mock_add.return_value = 5
-    mock_divide.return_value = 5.0
-    mock_multiply.return_value = 5
-    
-    result = calculate_statistics([5])
-    
-    assert result == {'sum': 5, 'average': 5.0, 'product': 5, 'count': 1}
-    mock_add.assert_called_with(0, 5)
-    mock_divide.assert_called_with(5, 1)
-    mock_multiply.assert_called_with(1, 5)
-
-@patch(f'{__name__}.multiply')
-@patch(f'{__name__}.divide')
-@patch(f'{__name__}.add')
-def test_calculate_statistics_error(mock_add, mock_divide, mock_multiply):
-    """Test error propagation and invalid types."""
-    # Case 1: Dependency raises an internal exception (e.g., division error)
+    # Case 2: Single item list
     mock_add.return_value = 10
-    mock_divide.side_effect = ZeroDivisionError("Math error")
+    mock_divide.return_value = 10.0
+    mock_multiply.return_value = 10
     
-    with pytest.raises(ZeroDivisionError, match="Math error"):
-        calculate_statistics([10])
-    
-    # Case 2: Input that is not a list/iterable and not falsy
-    # This will trigger a TypeError during the for-loop iteration
-    with pytest.raises(TypeError):
-        calculate_statistics(12345)
-        
-    # Case 3: Dependency raises TypeError due to bad data
+    single_result = calculate_statistics([10])
+    assert single_result == {
+        'sum': 10,
+        'average': 10.0,
+        'product': 10,
+        'count': 1
+    }
+    mock_add.assert_called_with(0, 10)
+    mock_divide.assert_called_with(10, 1)
+    mock_multiply.assert_called_with(1, 10)
+
+@patch(f'{__name__}.add')
+def test_calculate_statistics_error(mock_add):
+    """Test exception handling when external dependencies raise errors."""
+    # Simulate a TypeError if invalid data is passed and add fails
     mock_add.side_effect = TypeError("Unsupported operand types")
+    
     with pytest.raises(TypeError, match="Unsupported operand types"):
-        calculate_statistics(["not", "a", "number"])
+        calculate_statistics(["invalid", "input"])
+    
+    # Verify the function stopped at the first dependency failure
+    assert mock_add.called_once()

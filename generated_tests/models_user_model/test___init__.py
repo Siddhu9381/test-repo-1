@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import patch, Mock
 from models.base_model import BaseModel
 
-# Saving reference for spec as per requirements
+# Save reference to the real class for spec-based mocking
 _RealBaseModel = BaseModel
 
 class UserModel(BaseModel):
@@ -21,43 +21,42 @@ class UserModel(BaseModel):
         self.email = email
 
 @patch(f'{__name__}.BaseModel.__init__', return_value=None)
-def test_user_model_init_success(mock_base_init):
-    # Setup
-    test_name = "Jane Doe"
-    test_email = "jane.doe@example.com"
-    test_id = "uuid-1234"
+def test_init_success(mock_base_init):
+    # Happy path: Initialize with valid name, email, and id
+    test_name = "Alice Smith"
+    test_email = "alice@example.com"
+    test_id = "user-uuid-1234"
 
-    # Execute
     user = UserModel(name=test_name, email=test_email, id=test_id)
 
-    # Assert
+    # Verify attributes are set correctly
     assert user.name == test_name
     assert user.email == test_email
+    # Verify the parent class constructor was called with the correct ID
     mock_base_init.assert_called_once_with(test_id)
 
 @patch(f'{__name__}.BaseModel.__init__', return_value=None)
-def test_user_model_init_edge_cases(mock_base_init):
-    # Setup - testing empty strings and None ID
+def test_init_edge_cases(mock_base_init):
+    # Edge cases: Empty strings and default None for id
     test_name = ""
     test_email = ""
-    test_id = None
+    
+    user = UserModel(name=test_name, email=test_email)
 
-    # Execute
-    user = UserModel(name=test_name, email=test_email, id=test_id)
-
-    # Assert
     assert user.name == ""
     assert user.email == ""
+    # Verify super() was called with the default None value
     mock_base_init.assert_called_once_with(None)
 
 @patch(f'{__name__}.BaseModel.__init__')
-def test_user_model_init_error(mock_base_init):
-    # Setup - simulate parent class initialization failure
-    mock_base_init.side_effect = Exception("Database connection failed during ID validation")
-
-    # Execute & Assert
-    with pytest.raises(Exception) as excinfo:
-        UserModel(name="Error User", email="error@example.com", id="err-999")
+def test_init_error(mock_base_init):
+    # Error path: Parent class constructor raises an exception
+    # Use spec for the mock to ensure it behaves like the real method
+    mock_base_init.side_effect = ValueError("Invalid ID format")
     
-    assert str(excinfo.value) == "Database connection failed during ID validation"
-    mock_base_init.assert_called_once_with("err-999")
+    with pytest.raises(ValueError) as exc_info:
+        UserModel(name="Error User", email="error@test.com", id="invalid-id")
+    
+    # Verify the exception message and call behavior
+    assert str(exc_info.value) == "Invalid ID format"
+    mock_base_init.assert_called_once_with("invalid-id")

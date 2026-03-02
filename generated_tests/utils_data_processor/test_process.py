@@ -11,54 +11,54 @@ def process(self):
     return f"Processed: {self.data}"
 
 def test_process_success():
-    """Happy path with normal inputs"""
-    # Setup mock object to act as 'self'
-    mock_self = Mock()
-    mock_self.data = "Normal Test Data"
+    # Setup mock instance with standard string data
+    mock_instance = Mock()
+    mock_instance.data = "valid_test_payload"
     
     # Execute the function
-    result = process(mock_self)
+    result = process(mock_instance)
     
     # Assertions
-    assert result == "Processed: Normal Test Data"
+    assert result == "Processed: valid_test_payload"
     assert isinstance(result, str)
+    assert "Processed:" in result
 
 def test_process_edge_cases():
-    """None, empty values, and boundaries"""
-    mock_self = Mock()
-    
     # Case 1: Empty string
-    mock_self.data = ""
-    assert process(mock_self) == "Processed: "
+    mock_instance_empty = Mock()
+    mock_instance_empty.data = ""
+    assert process(mock_instance_empty) == "Processed: "
     
-    # Case 2: None value
-    mock_self.data = None
-    assert process(mock_self) == "Processed: None"
+    # Case 2: None value (f-string converts None to 'None')
+    mock_instance_none = Mock()
+    mock_instance_none.data = None
+    assert process(mock_instance_none) == "Processed: None"
     
-    # Case 3: Numeric value
-    mock_self.data = 0
-    assert process(mock_self) == "Processed: 0"
+    # Case 3: Numeric boundary (integer)
+    mock_instance_int = Mock()
+    mock_instance_int.data = 0
+    assert process(mock_instance_int) == "Processed: 0"
     
-    # Case 4: Large string
-    long_data = "A" * 1000
-    mock_self.data = long_data
-    assert process(mock_self) == f"Processed: {long_data}"
+    # Case 4: Special characters
+    mock_instance_special = Mock()
+    mock_instance_special.data = "!@#$%^&*()"
+    assert process(mock_instance_special) == "Processed: !@#$%^&*()"
 
 def test_process_error():
-    """Exception handling and error paths"""
-    # Test scenario: self does not have the attribute 'data'
+    # Case 1: Attribute does not exist on the object
     # Using spec=[] ensures the Mock doesn't dynamically create the 'data' attribute
-    mock_self = Mock(spec=[])
-    
-    with pytest.raises(AttributeError) as exc_info:
-        process(mock_self)
-    
-    assert "data" in str(exc_info.value)
-
-    # Test scenario: data property exists but raises an exception when accessed
-    mock_self_with_error = Mock()
-    type(mock_self_with_error).data = property(Mock(side_effect=RuntimeError("Data access failed")))
-    
-    with pytest.raises(RuntimeError) as exc_info:
-        process(mock_self_with_error)
-    assert str(exc_info.value) == "Data access failed"
+    mock_instance_no_attr = Mock(spec=[])
+    with pytest.raises(AttributeError):
+        process(mock_instance_no_attr)
+        
+    # Case 2: self is None
+    with pytest.raises(AttributeError):
+        process(None)
+        
+    # Case 3: Data attribute exists but string conversion fails
+    mock_bad_data = Mock()
+    mock_bad_data.__str__.side_effect = ValueError("String conversion error")
+    mock_instance_fail = Mock()
+    mock_instance_fail.data = mock_bad_data
+    with pytest.raises(ValueError):
+        process(mock_instance_fail)

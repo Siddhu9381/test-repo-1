@@ -14,53 +14,66 @@ def transform(self, transformation: str):
     return f"Transformed ({transformation}): {self.data}"
 
 def test_transform_success():
-    """Test the happy path with typical string inputs."""
-    # Create a mock for 'self' and assign 'data' attribute
-    mock_self = Mock()
-    mock_self.data = "sample_data_123"
+    # Happy path with normal string inputs
+    mock_instance = Mock()
+    mock_instance.data = "raw_input_content"
     transformation_type = "normalize"
     
-    # Execute method
-    result = transform(mock_self, transformation_type)
+    expected_result = "Transformed (normalize): raw_input_content"
+    actual_result = transform(mock_instance, transformation_type)
     
-    # Assertions
-    assert result == "Transformed (normalize): sample_data_123"
-    assert isinstance(result, str)
-    assert "normalize" in result
-    assert "sample_data_123" in result
+    assert actual_result == expected_result
+    assert isinstance(actual_result, str)
+    assert "normalize" in actual_result
+    assert "raw_input_content" in actual_result
 
 def test_transform_edge_cases():
-    """Test edge cases including empty strings and None values."""
-    mock_self = Mock()
+    # Testing empty values, boundary strings, and numeric data types
+    mock_instance = Mock()
     
-    # Case 1: Empty strings for both data and transformation
-    mock_self.data = ""
-    assert transform(mock_self, "") == "Transformed (): "
+    # Empty string inputs
+    mock_instance.data = ""
+    assert transform(mock_instance, "") == "Transformed (): "
     
-    # Case 2: Data is None (f-string will convert to 'None' string)
-    mock_self.data = None
-    assert transform(mock_self, "none_check") == "Transformed (none_check): None"
+    # Whitespace and special characters
+    mock_instance.data = " \t\n "
+    assert transform(mock_instance, "!@#") == "Transformed (!@#):  \t\n "
     
-    # Case 3: Transformation name contains special characters
-    mock_self.data = "payload"
-    special_transform = "!@#$%^&*()"
-    assert transform(mock_self, special_transform) == f"Transformed ({special_transform}): payload"
+    # Large string input
+    large_data = "x" * 1000
+    mock_instance.data = large_data
+    assert transform(mock_instance, "heavy") == f"Transformed (heavy): {large_data}"
+    
+    # Non-string data (f-strings handle non-string types via __str__)
+    mock_instance.data = 100.5
+    assert transform(mock_instance, "numeric") == "Transformed (numeric): 100.5"
 
 def test_transform_error():
-    """Test error scenarios such as missing attributes or incorrect arguments."""
-    # Scenario 1: AttributeError - self does not have 'data' attribute
-    # Using spec=[] ensures the mock object has no attributes defined
-    mock_self_invalid = Mock(spec=[])
+    # Exception handling for missing attributes and invalid string conversions
+    
+    # Scenario 1: self does not have the required 'data' attribute
+    mock_invalid_instance = Mock(spec=[]) 
     with pytest.raises(AttributeError):
-        transform(mock_self_invalid, "test")
+        transform(mock_invalid_instance, "any_transformation")
         
-    # Scenario 2: TypeError - Missing required positional argument 'transformation'
-    mock_self_valid = Mock()
-    mock_self_valid.data = "valid_data"
-    with pytest.raises(TypeError):
-        # Calling without the required 'transformation' parameter
-        transform(mock_self_valid)
-        
-    # Scenario 3: TypeError - Passing extra unexpected arguments
-    with pytest.raises(TypeError):
-        transform(mock_self_valid, "transform_name", "unexpected_arg")
+    # Scenario 2: transformation object raises an error during string interpolation
+    class FaultyString:
+        def __str__(self):
+            raise TypeError("String conversion failed")
+            
+    mock_valid_instance = Mock()
+    mock_valid_instance.data = "valid_data"
+    
+    with pytest.raises(TypeError, match="String conversion failed"):
+        transform(mock_valid_instance, FaultyString())
+
+    # Scenario 3: self.data object raises an error during string interpolation
+    class FaultyData:
+        def __str__(self):
+            raise ValueError("Data conversion error")
+            
+    mock_faulty_data_instance = Mock()
+    mock_faulty_data_instance.data = FaultyData()
+    
+    with pytest.raises(ValueError, match="Data conversion error"):
+        transform(mock_faulty_data_instance, "test")

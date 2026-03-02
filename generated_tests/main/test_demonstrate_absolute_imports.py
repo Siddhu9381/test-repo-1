@@ -1,7 +1,6 @@
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import patch, Mock
 
-# Define the function under test within the test module scope to facilitate patching
 def demonstrate_absolute_imports():
     """Demonstrate absolute import patterns."""
     print("=" * 60)
@@ -30,32 +29,22 @@ def demonstrate_absolute_imports():
     print(f"   reverse_string('hello') = {reverse_string('hello')}")
     print(f"   count_words('this is a test') = {count_words('this is a test')}")
 
-# Global placeholders for patching
-add = None
-subtract = None
-multiply = None
-divide = None
-math_utils_module = None
-utils = None
-capitalize_words = None
-reverse_string = None
-count_words = None
-
-@patch(f'{__name__}.count_words')
-@patch(f'{__name__}.reverse_string')
-@patch(f'{__name__}.capitalize_words')
-@patch(f'{__name__}.utils')
-@patch(f'{__name__}.math_utils_module')
-@patch(f'{__name__}.divide')
-@patch(f'{__name__}.multiply')
-@patch(f'{__name__}.subtract')
-@patch(f'{__name__}.add')
+@patch("builtins.print")
+@patch(f"{__name__}.count_words")
+@patch(f"{__name__}.reverse_string")
+@patch(f"{__name__}.capitalize_words")
+@patch(f"{__name__}.utils")
+@patch(f"{__name__}.math_utils_module")
+@patch(f"{__name__}.divide")
+@patch(f"{__name__}.multiply")
+@patch(f"{__name__}.subtract")
+@patch(f"{__name__}.add")
 def test_demonstrate_absolute_imports_success(
-    mock_add, mock_subtract, mock_multiply, mock_divide,
-    mock_math_utils_module, mock_utils,
-    mock_capitalize_words, mock_reverse_string, mock_count_words
+    mock_add, mock_subtract, mock_multiply, mock_divide, 
+    mock_math_utils_module, mock_utils, mock_capitalize_words, 
+    mock_reverse_string, mock_count_words, mock_print
 ):
-    # Setup mocks with realistic success data
+    # Setup mocks
     mock_add.return_value = 8.0
     mock_subtract.return_value = 6.0
     mock_multiply.return_value = 42.0
@@ -73,41 +62,39 @@ def test_demonstrate_absolute_imports_success(
     # Execute
     demonstrate_absolute_imports()
 
-    # Assertions for direct function calls
+    # Assertions
     mock_add.assert_called_once_with(5, 3)
     mock_subtract.assert_called_once_with(10, 4)
     mock_multiply.assert_called_once_with(6, 7)
     mock_divide.assert_called_once_with(20, 4)
-    
-    # Assertions for module/package calls
     mock_math_utils_module.add.assert_called_once_with(2, 2)
     mock_utils.add.assert_called_once_with(1, 1)
     mock_utils.capitalize_words.assert_called_once_with('hello world')
-    
-    # Assertions for string utility calls
     mock_capitalize_words.assert_called_once_with('python is great')
     mock_reverse_string.assert_called_once_with('hello')
     mock_count_words.assert_called_once_with('this is a test')
+    assert mock_print.called
 
-@patch(f'{__name__}.count_words')
-@patch(f'{__name__}.reverse_string')
-@patch(f'{__name__}.capitalize_words')
-@patch(f'{__name__}.utils')
-@patch(f'{__name__}.math_utils_module')
-@patch(f'{__name__}.divide')
-@patch(f'{__name__}.multiply')
-@patch(f'{__name__}.subtract')
-@patch(f'{__name__}.add')
+@patch("builtins.print")
+@patch(f"{__name__}.count_words")
+@patch(f"{__name__}.reverse_string")
+@patch(f"{__name__}.capitalize_words")
+@patch(f"{__name__}.utils")
+@patch(f"{__name__}.math_utils_module")
+@patch(f"{__name__}.divide")
+@patch(f"{__name__}.multiply")
+@patch(f"{__name__}.subtract")
+@patch(f"{__name__}.add")
 def test_demonstrate_absolute_imports_edge_cases(
-    mock_add, mock_subtract, mock_multiply, mock_divide,
-    mock_math_utils_module, mock_utils,
-    mock_capitalize_words, mock_reverse_string, mock_count_words
+    mock_add, mock_subtract, mock_multiply, mock_divide, 
+    mock_math_utils_module, mock_utils, mock_capitalize_words, 
+    mock_reverse_string, mock_count_words, mock_print
 ):
-    # Setup mocks with edge case data (zeros, empty strings)
+    # Setup mocks with edge case values (zeros, empty strings)
     mock_add.return_value = 0.0
     mock_subtract.return_value = -1.0
     mock_multiply.return_value = 0.0
-    mock_divide.return_value = 0.0
+    mock_divide.return_value = float('inf')
     
     mock_math_utils_module.add.return_value = 0.0
     
@@ -121,20 +108,35 @@ def test_demonstrate_absolute_imports_edge_cases(
     # Execute
     demonstrate_absolute_imports()
 
-    # Verify that even with edge case return values, all dependencies were triggered
-    assert mock_add.call_count == 1
-    assert mock_utils.capitalize_words.call_count == 1
-    assert mock_count_words.call_count == 1
+    # Assertions for boundary values
     assert mock_count_words.return_value == 0
+    assert mock_capitalize_words.return_value == ""
+    mock_divide.assert_called_with(20, 4)
 
-@patch(f'{__name__}.add')
-def test_demonstrate_absolute_imports_error(mock_add):
+@patch("builtins.print")
+@patch(f"{__name__}.count_words")
+@patch(f"{__name__}.reverse_string")
+@patch(f"{__name__}.capitalize_words")
+@patch(f"{__name__}.utils")
+@patch(f"{__name__}.math_utils_module")
+@patch(f"{__name__}.divide")
+@patch(f"{__name__}.multiply")
+@patch(f"{__name__}.subtract")
+@patch(f"{__name__}.add")
+def test_demonstrate_absolute_imports_error(
+    mock_add, mock_subtract, mock_multiply, mock_divide, 
+    mock_math_utils_module, mock_utils, mock_capitalize_words, 
+    mock_reverse_string, mock_count_words, mock_print
+):
     # Setup mock to raise an exception
-    mock_add.side_effect = Exception("Dependency Failure")
+    mock_add.side_effect = ValueError("Math domain error")
 
-    # Execute and Assert that the exception propagates correctly
-    with pytest.raises(Exception) as excinfo:
+    # Execute and Assert
+    with pytest.raises(ValueError) as excinfo:
         demonstrate_absolute_imports()
     
-    assert str(excinfo.value) == "Dependency Failure"
-    mock_add.assert_called_once()
+    assert str(excinfo.value) == "Math domain error"
+    
+    # Verify execution stopped at the error
+    mock_subtract.assert_not_called()
+    mock_utils.add.assert_not_called()

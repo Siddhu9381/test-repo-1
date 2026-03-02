@@ -1,84 +1,72 @@
 import pytest
 from unittest.mock import Mock, PropertyMock
-from datetime import datetime
-
-# Function under test
-def get_full_info(self) -> str:
-    """
-    Get full user information as a formatted string.
-    
-    Returns:
-        Formatted string with user information
-    """
-    return f"User: {self.name} ({self.email}) - ID: {self.id}"
+from models.base_model import BaseModel
 
 def test_get_full_info_success():
     """
-    Test the happy path with normal string inputs and expected formatting.
+    Test the happy path of get_full_info with standard string inputs.
+    Verifies that the formatted string correctly incorporates name, email, and ID.
     """
-    # Setup mock with realistic data
-    mock_user = Mock(spec=['name', 'email', 'id'])
-    mock_user.name = "John Doe"
-    mock_user.email = "john.doe@example.com"
-    mock_user.id = "USR-12345"
+    # Save reference to real class and create a mock instance
+    _RealBaseModel = BaseModel
+    mock_user = Mock(spec=_RealBaseModel)
     
-    # Execute the function
-    result = get_full_info(mock_user)
+    # Setup realistic test data
+    mock_user.name = "Alice Smith"
+    mock_user.email = "alice.smith@example.com"
+    mock_user.id = "USR-1001"
+    
+    # Execute the method using the mock instance as 'self'
+    result = _RealBaseModel.get_full_info(mock_user)
     
     # Assertions
-    assert result == "User: John Doe (john.doe@example.com) - ID: USR-12345"
+    expected = "User: Alice Smith (alice.smith@example.com) - ID: USR-1001"
+    assert result == expected
     assert isinstance(result, str)
-    assert "John Doe" in result
-    assert "USR-12345" in result
 
 def test_get_full_info_edge_cases():
     """
-    Test edge cases including empty strings, None values, and numeric boundaries.
+    Test edge cases including empty strings, numeric values, and None.
+    Verifies the function's behavior with boundary data types and values.
     """
-    mock_user = Mock(spec=['name', 'email', 'id'])
+    _RealBaseModel = BaseModel
+    mock_user = Mock(spec=_RealBaseModel)
     
-    # Case 1: Empty strings
+    # Case 1: Empty strings and integer ID
     mock_user.name = ""
     mock_user.email = ""
-    mock_user.id = ""
-    assert get_full_info(mock_user) == "User:  () - ID: "
+    mock_user.id = 0
+    assert _RealBaseModel.get_full_info(mock_user) == "User:  () - ID: 0"
     
-    # Case 2: None values (Python f-strings convert None to the string 'None')
+    # Case 2: Very long strings
+    mock_user.name = "A" * 100
+    mock_user.email = "dev@company.international"
+    mock_user.id = 999999999
+    result = _RealBaseModel.get_full_info(mock_user)
+    assert "A" * 100 in result
+    assert "999999999" in result
+    
+    # Case 3: None values (checking f-string default conversion)
     mock_user.name = None
     mock_user.email = None
     mock_user.id = None
-    assert get_full_info(mock_user) == "User: None (None) - ID: None"
-    
-    # Case 3: Numeric ID and special characters in name
-    mock_user.name = "Admin & User"
-    mock_user.email = "admin@system.local"
-    mock_user.id = 0
-    result = get_full_info(mock_user)
-    assert "ID: 0" in result
-    assert "Admin & User" in result
+    assert _RealBaseModel.get_full_info(mock_user) == "User: None (None) - ID: None"
 
 def test_get_full_info_error():
     """
-    Test exception handling and error paths when attributes are missing or raise exceptions.
+    Test error scenarios where attribute access might fail.
+    Simulates an AttributeError during string formatting, common in ORM lazy-loading failures.
     """
-    # Scenario 1: Mocking an object that lacks the required attributes (AttributeError)
-    mock_invalid_user = Mock(spec=[])
-    with pytest.raises(AttributeError):
-        get_full_info(mock_invalid_user)
-        
-    # Scenario 2: Mocking an attribute that raises an exception during access
-    mock_faulty_user = Mock(spec=['name', 'email', 'id'])
-    # We use PropertyMock to simulate an exception when the 'email' property is accessed
-    type(mock_faulty_user).email = PropertyMock(side_effect=RuntimeError("Database connection failed"))
+    _RealBaseModel = BaseModel
+    mock_user = Mock(spec=_RealBaseModel)
     
-    with pytest.raises(RuntimeError, match="Database connection failed"):
-        get_full_info(mock_faulty_user)
-
-    # Scenario 3: Verify behavior when name is not a string (f-string should handle it)
-    mock_user_types = Mock(spec=['name', 'email', 'id'])
-    mock_user_types.name = 12345
-    mock_user_types.email = ["test@test.com"]
-    mock_user_types.id = {"key": "val"}
-    result = get_full_info(mock_user_types)
-    assert "12345" in result
-    assert "['test@test.com']" in result
+    # Use PropertyMock to simulate a failure when the 'email' attribute is accessed
+    # This ensures we cover paths where the object state is invalid or inaccessible
+    type(mock_user).email = PropertyMock(side_effect=AttributeError("Email attribute not initialized"))
+    mock_user.name = "John Doe"
+    mock_user.id = "123"
+    
+    with pytest.raises(AttributeError) as exc_info:
+        _RealBaseModel.get_full_info(mock_user)
+    
+    assert "Email attribute not initialized" in str(exc_info.value)

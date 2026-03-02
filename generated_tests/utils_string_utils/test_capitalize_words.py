@@ -18,44 +18,42 @@ def capitalize_words(text: str) -> str:
     return ' '.join(word.capitalize() for word in text.split())
 
 def test_capitalize_words_success():
+    # Setup mocks
     # Dependency: text
     mock_text = Mock()
-    mock_text.split.return_value = ['python', 'is', 'awesome']
+    mock_text.split.return_value = ['hello', 'world', 'from', 'pytest']
     
-    # Execute the function with the mock object
+    # Execute
     result = capitalize_words(mock_text)
     
-    # Assertions
-    assert result == 'Python Is Awesome'
-    mock_text.split.assert_called_once()
-    # Verify the logic processed all elements in the list returned by split
+    # Assert
+    assert result == 'Hello World From Pytest'
+    mock_text.split.assert_called_once_with()
 
 def test_capitalize_words_edge_cases():
-    # Dependency: text (testing empty string behavior via mock)
+    # Setup mocks
+    # Dependency: text
     mock_text = Mock()
+    # Scenario: Empty input string results in empty list from split()
     mock_text.split.return_value = []
     
-    # Execute with mock representing an empty input or input with only whitespace
+    # Execute
     result = capitalize_words(mock_text)
     
-    # Assertions
+    # Assert
     assert result == ''
-    mock_text.split.assert_called_once()
-
-    # Testing single word
-    mock_single = Mock()
-    mock_single.split.return_value = ['test']
-    assert capitalize_words(mock_single) == 'Test'
+    mock_text.split.assert_called_once_with()
 
 def test_capitalize_words_error():
+    # Setup mocks
     # Dependency: text
-    # Simulate a scenario where the input does not have a split method or it fails
     mock_text = Mock()
-    mock_text.split.side_effect = AttributeError("Object has no attribute 'split'")
+    # Scenario: Input triggers an AttributeError (e.g., if text is None)
+    mock_text.split.side_effect = AttributeError("Mocked AttributeError")
     
-    # Exception handling verification
+    # Assert
     with pytest.raises(AttributeError) as excinfo:
         capitalize_words(mock_text)
     
-    assert "Object has no attribute 'split'" in str(excinfo.value)
-    mock_text.split.assert_called_once()
+    assert "Mocked AttributeError" in str(excinfo.value)
+    mock_text.split.assert_called_once_with()

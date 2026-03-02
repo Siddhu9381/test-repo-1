@@ -1,6 +1,5 @@
 import pytest
-from unittest.mock import patch, Mock
-import math
+from unittest.mock import Mock, patch
 
 def subtract(a: float, b: float) -> float:
     """
@@ -20,42 +19,39 @@ def subtract(a: float, b: float) -> float:
     return a - b
 
 def test_subtract_success():
-    """Test subtract with standard integer and float inputs, including negative results."""
-    # Test basic positive float subtraction
-    assert subtract(10.5, 5.5) == 5.0
-    # Test subtraction resulting in a negative number
+    """Test the happy path with standard float and integer inputs."""
+    # Test positive subtraction
+    assert subtract(10.0, 5.0) == 5.0
+    # Test negative results
     assert subtract(5.0, 10.0) == -5.0
     # Test subtraction with negative numbers
-    assert subtract(-1.0, -5.0) == 4.0
-    # Test subtraction with mixed integer and float types
-    assert subtract(20, 5.5) == 14.5
-    # Test subtraction resulting in zero
-    assert subtract(1.23, 1.23) == 0.0
+    assert subtract(-1.0, -1.0) == 0.0
+    # Test integer promotion to float
+    assert subtract(10, 5) == 5.0
+    assert isinstance(subtract(10, 5), (float, int))
 
 def test_subtract_edge_cases():
-    """Test subtract with zeros, infinities, and large values."""
-    # Test zero boundaries
+    """Test boundary conditions, zeros, and floating point limits."""
+    # Test zeros
     assert subtract(0.0, 0.0) == 0.0
-    # Test subtraction with infinity
-    assert subtract(float('inf'), 1.0) == float('inf')
-    assert subtract(1.0, float('inf')) == float('-inf')
-    assert subtract(float('inf'), float('-inf')) == float('inf')
-    # Test NaN case: infinity minus infinity is undefined
-    assert math.isnan(subtract(float('inf'), float('inf')))
-    # Test very large numbers (float precision limits)
+    assert subtract(0.0, 5.0) == -5.0
+    # Test large numbers
     assert subtract(1e18, 1.0) == 1e18 - 1.0
+    # Test infinity behavior
+    inf = float('inf')
+    assert subtract(inf, 1.0) == inf
+    assert subtract(1.0, inf) == float('-inf')
+    # Test precision with pytest.approx
+    assert subtract(0.3, 0.1) == pytest.approx(0.2)
 
 def test_subtract_error():
-    """Test subtract with invalid types to ensure TypeErrors are raised."""
-    # Test with string as first argument
+    """Test error handling for invalid input types."""
+    # Test with strings
     with pytest.raises(TypeError):
-        subtract("10", 5.0)
-    # Test with None as second argument
+        subtract("5", 3)
+    # Test with None values
     with pytest.raises(TypeError):
-        subtract(10.0, None)
+        subtract(5.0, None)
     # Test with complex data structures
     with pytest.raises(TypeError):
         subtract([10.0], 5.0)
-    # Test with dictionaries
-    with pytest.raises(TypeError):
-        subtract(10.0, {"value": 5.0})

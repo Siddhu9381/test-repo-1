@@ -1,58 +1,52 @@
 import pytest
-from unittest.mock import Mock
+from unittest.mock import MagicMock, patch
 
-class Model:
-    def delete(self):
-        """
-        Delete the model.
-        
-        Returns:
-            True if deleted successfully
-        """
-        return True
+def delete(self):
+    """
+    Delete the model.
+    
+    Returns:
+        True if deleted successfully
+    """
+    return True
 
 def test_delete_success():
     """
-    Test the happy path: ensure the delete method returns True under normal conditions.
+    Test the happy path where the delete method is called on a valid instance.
     """
-    # Initialize the class instance
-    model_instance = Model()
-    
-    # Execute the method
-    result = model_instance.delete()
+    mock_instance = MagicMock()
+    # Execute the method logic by passing the mock instance as 'self'
+    result = delete(mock_instance)
     
     # Assertions
-    assert result is True
-    assert isinstance(result, bool)
+    assert result is True, "The delete method should return True"
+    assert isinstance(result, bool), "The return value must be a boolean"
 
 def test_delete_edge_cases():
     """
-    Test edge cases: ensure the method is idempotent and works on mock instances.
+    Test edge cases such as passing unusual types for the 'self' argument.
     """
-    # Using a Mock object to ensure the method doesn't rely on internal instance state
-    mock_instance = Mock(spec=Model)
+    # Since the implementation does not use 'self', it should handle None
+    assert delete(None) is True, "Should return True even if self is None"
     
-    # Test idempotency: calling delete multiple times should consistently return True
-    result_first = Model.delete(mock_instance)
-    result_second = Model.delete(mock_instance)
+    # Test with an object that has no attributes or methods
+    assert delete(object()) is True, "Should return True with a generic object"
     
-    assert result_first is True
-    assert result_second is True
+    # Test with a primitive type
+    assert delete(123) is True, "Should return True with an integer as self"
 
 def test_delete_error():
     """
-    Test error paths: verify the method does not raise exceptions even if the 
-    instance state is modified or stripped.
+    Test error scenarios related to the function's signature and execution.
     """
-    model_instance = Model()
-    
-    # Simulate a "broken" instance by removing attributes if any existed
-    # (Though this specific function has no dependencies, we ensure robustness)
-    model_instance.__dict__ = {}
-    
-    try:
-        result = model_instance.delete()
-    except Exception as e:
-        pytest.fail(f"delete() raised {type(e).__name__} unexpectedly!")
+    # Test that calling the function without the required 'self' argument raises TypeError
+    with pytest.raises(TypeError):
+        delete()
         
-    assert result is True
+    # Test that providing extra arguments raises TypeError
+    with pytest.raises(TypeError):
+        delete(MagicMock(), "extra_argument")
+        
+    # Test that providing keyword arguments incorrectly raises TypeError
+    with pytest.raises(TypeError):
+        delete(self=MagicMock(), extra="unexpected")

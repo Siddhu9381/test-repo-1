@@ -19,35 +19,45 @@ def reverse_string(text: str) -> str:
 
 def test_reverse_string_success():
     """Happy path with normal inputs."""
-    # Test standard lowercase string
+    # Test standard word
     assert reverse_string("hello") == "olleh"
-    # Test string with mixed casing
-    assert reverse_string("Python") == "nohtyP"
-    # Test string with spaces and numbers
-    assert reverse_string("123 abc") == "cba 321"
-    # Test long sentence
-    assert reverse_string("senior developer") == "repoleved roines"
+    
+    # Test sentence with spaces
+    assert reverse_string("Python is great") == "taerg si nohtyP"
+    
+    # Test palindrome
+    assert reverse_string("racecar") == "racecar"
+    
+    # Test numeric string
+    assert reverse_string("12345") == "54321"
 
 def test_reverse_string_edge_cases():
     """None, empty values, boundaries."""
     # Test empty string
     assert reverse_string("") == ""
+    
     # Test single character
     assert reverse_string("a") == "a"
-    # Test palindrome
-    assert reverse_string("racecar") == "racecar"
-    # Test string with special characters and unicode
-    assert reverse_string("!@#$%^") == "^%$#@!"
-    assert reverse_string("🐍🔥") == "🔥🐍"
+    
+    # Test whitespace only
+    assert reverse_string("   ") == "   "
+    
+    # Test special characters and unicode
+    assert reverse_string("!@#$%^&*()") == ")(*&^%$#@!"
+    assert reverse_string("🚀🔥") == "🔥🚀"
 
 def test_reverse_string_error():
     """Exception handling and error paths."""
-    # Passing None should raise a TypeError as NoneType is not subscriptable
+    # Test passing None - should raise TypeError because None is not subscriptable
     with pytest.raises(TypeError):
         reverse_string(None)
-    # Passing an integer should raise a TypeError as int is not subscriptable
+    
+    # Test passing an integer - should raise TypeError
     with pytest.raises(TypeError):
-        reverse_string(12345)
-    # Passing a custom object that does not support slicing
-    with pytest.raises(TypeError):
-        reverse_string(object())
+        reverse_string(123)
+    
+    # Test passing a list
+    # While list[::-1] works in Python, the type hint specifies str. 
+    # In a strict environment, we ensure it behaves as expected for non-strings.
+    input_list = [1, 2, 3]
+    assert reverse_string(input_list) == [3, 2, 1] # Slicing works on sequences

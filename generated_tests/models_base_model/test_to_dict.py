@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import Mock
+from unittest.mock import MagicMock
 
 def to_dict(self) -> dict:
     """
@@ -14,62 +14,66 @@ def to_dict(self) -> dict:
     }
 
 def test_to_dict_success():
-    # Setup: Create a mock object to represent 'self'
-    mock_model = Mock()
-    mock_model.id = 500
-    mock_model.created_at = "2023-12-25 08:00:00"
+    """Test happy path with normal integer ID and valid timestamp string."""
+    mock_instance = MagicMock()
+    mock_instance.id = 1001
+    mock_instance.created_at = "2023-10-27 12:00:00"
     
-    # Execute: Call the function with the mock instance
-    result = to_dict(mock_model)
-    
-    # Assert: Verify dictionary keys and values
-    expected = {
-        'id': 500,
-        'created_at': "2023-12-25 08:00:00"
+    expected_result = {
+        'id': 1001,
+        'created_at': '2023-10-27 12:00:00'
     }
-    assert result == expected
+    
+    result = to_dict(mock_instance)
+    
+    assert result == expected_result
     assert isinstance(result, dict)
-    assert result['id'] == 500
-    assert result['created_at'] == "2023-12-25 08:00:00"
+    assert result['id'] == 1001
+    assert result['created_at'] == '2023-10-27 12:00:00'
 
 def test_to_dict_edge_cases():
-    # Setup: Mock instance with empty and None values
-    mock_model = Mock()
+    """Test edge cases including None values, empty strings, and complex objects."""
+    mock_instance = MagicMock()
     
-    # Test case: None values
-    mock_model.id = None
-    mock_model.created_at = None
-    result_none = to_dict(mock_model)
-    assert result_none['id'] is None
-    assert result_none['created_at'] == "None"
+    # Case 1: None values
+    mock_instance.id = None
+    mock_instance.created_at = None
+    result = to_dict(mock_instance)
+    assert result == {'id': None, 'created_at': 'None'}
     
-    # Test case: Empty strings and falsy values
-    mock_model.id = ""
-    mock_model.created_at = ""
-    result_empty = to_dict(mock_model)
-    assert result_empty['id'] == ""
-    assert result_empty['created_at'] == ""
+    # Case 2: Empty strings
+    mock_instance.id = ""
+    mock_instance.created_at = ""
+    result = to_dict(mock_instance)
+    assert result == {'id': "", 'created_at': ""}
     
-    # Test case: Boundary numeric values
-    mock_model.id = 0
-    result_zero = to_dict(mock_model)
-    assert result_zero['id'] == 0
+    # Case 3: Non-standard types for ID (UUID string)
+    mock_instance.id = "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+    mock_instance.created_at = MagicMock()
+    mock_instance.created_at.__str__.return_value = "Mocked Date"
+    result = to_dict(mock_instance)
+    assert result['id'] == "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+    assert result['created_at'] == "Mocked Date"
 
 def test_to_dict_error():
-    # Setup: Mock instance that will raise an AttributeError for a missing field
-    # Using spec=[] ensures that any attribute access not explicitly defined raises AttributeError
-    mock_model_incomplete = Mock(spec=['created_at'])
-    mock_model_incomplete.created_at = "2023-01-01"
-    
+    """Test error scenarios such as missing attributes or string conversion failures."""
+    # Scenario 1: Missing 'id' attribute on the object
+    mock_instance = MagicMock(spec=[]) 
     with pytest.raises(AttributeError):
-        to_dict(mock_model_incomplete)
+        to_dict(mock_instance)
         
-    # Setup: Mock instance where str() conversion fails
-    mock_model_broken_str = Mock()
-    mock_model_broken_str.id = 1
-    # Force the __str__ method of the created_at attribute to raise an exception
-    mock_model_broken_str.created_at = Mock()
-    mock_model_broken_str.created_at.__str__.side_effect = ValueError("String conversion error")
+    # Scenario 2: Error during string conversion of created_at
+    mock_faulty_instance = MagicMock()
+    mock_faulty_instance.id = 1
+    mock_faulty_instance.created_at = MagicMock()
+    mock_faulty_instance.created_at.__str__.side_effect = TypeError("String conversion failed")
     
-    with pytest.raises(ValueError, match="String conversion error"):
-        to_dict(mock_model_broken_str)
+    with pytest.raises(TypeError, match="String conversion failed"):
+        to_dict(mock_faulty_instance)
+
+    # Scenario 3: Missing 'created_at' attribute
+    mock_incomplete = MagicMock()
+    mock_incomplete.id = 5
+    del mock_incomplete.created_at
+    with pytest.raises(AttributeError):
+        to_dict(mock_incomplete)

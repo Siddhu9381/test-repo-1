@@ -18,40 +18,38 @@ def count_words(text: str) -> int:
     return len(text.split())
 
 def test_count_words_success():
-    # Dependency: text
+    # Setup mock for text dependency
     mock_text = Mock()
-    mock_text.split.return_value = ["senior", "python", "developer", "test"]
+    mock_text.split.return_value = ["senior", "python", "developer"]
     
-    # Execute
+    # Execute function under test
     result = count_words(mock_text)
     
-    # Assert
-    assert result == 4
+    # Assertions
+    assert result == 3
     assert isinstance(result, int)
     mock_text.split.assert_called_once()
 
 def test_count_words_edge_cases():
-    # Dependency: text
-    # Test empty string scenario where split() returns an empty list
+    # Setup mock for empty text scenario
     mock_text = Mock()
     mock_text.split.return_value = []
     
-    # Execute
+    # Execute function under test
     result = count_words(mock_text)
     
-    # Assert
+    # Assertions
     assert result == 0
     mock_text.split.assert_called_once()
 
 def test_count_words_error():
-    # Dependency: text
-    # Test scenario where the input does not support split (e.g., None or wrong type)
+    # Setup mock to simulate an error (e.g., if split is called on incompatible object)
     mock_text = Mock()
-    mock_text.split.side_effect = AttributeError("object has no attribute 'split'")
+    mock_text.split.side_effect = AttributeError("Mock object has no attribute split")
     
-    # Assert
-    with pytest.raises(AttributeError) as excinfo:
+    # Execute and Assert exception handling
+    with pytest.raises(AttributeError) as exc_info:
         count_words(mock_text)
     
-    assert "object has no attribute 'split'" in str(excinfo.value)
+    assert "Mock object has no attribute split" in str(exc_info.value)
     mock_text.split.assert_called_once()

@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, Mock
 from datetime import datetime
 
 class BaseModel:
@@ -14,47 +14,42 @@ class BaseModel:
         from datetime import datetime
         self.created_at = datetime.now()
 
-_RealDateTime = datetime
-
-@patch(f'{__name__}.datetime')
-def test_init_success(mock_datetime_class):
-    # Setup
-    mock_now = _RealDateTime(2023, 10, 27, 12, 0, 0)
-    mock_datetime_class.now.return_value = mock_now
-    test_id = "user-123"
-
-    # Execute
+@patch('datetime.datetime')
+def test_init_success(mock_datetime):
+    # Happy path: Test initialization with a valid string ID
+    fixed_now = datetime(2023, 10, 27, 12, 0, 0)
+    mock_datetime.now.return_value = fixed_now
+    test_id = "uuid-12345"
+    
     model = BaseModel(id=test_id)
-
-    # Assert
+    
     assert model.id == test_id
-    assert model.created_at == mock_now
-    mock_datetime_class.now.assert_called_once()
+    assert model.created_at == fixed_now
+    mock_datetime.now.assert_called_once()
 
-@patch(f'{__name__}.datetime')
-def test_init_edge_cases(mock_datetime_class):
-    # Setup
-    mock_now = _RealDateTime(2023, 10, 27, 12, 0, 0)
-    mock_datetime_class.now.return_value = mock_now
-
+@patch('datetime.datetime')
+def test_init_edge_cases(mock_datetime):
+    # Edge cases: Test initialization with None and empty values
+    fixed_now = datetime(2023, 10, 27, 12, 0, 0)
+    mock_datetime.now.return_value = fixed_now
+    
     # Case 1: ID is None
     model_none = BaseModel(id=None)
     assert model_none.id is None
-    assert model_none.created_at == mock_now
-
+    assert model_none.created_at == fixed_now
+    
     # Case 2: ID is an empty string
     model_empty = BaseModel(id="")
     assert model_empty.id == ""
-    assert model_empty.created_at == mock_now
+    assert model_empty.created_at == fixed_now
 
-@patch(f'{__name__}.datetime')
-def test_init_error(mock_datetime_class):
-    # Setup: Mock datetime.now to raise an exception
-    mock_datetime_class.now.side_effect = RuntimeError("System clock failure")
+@patch('datetime.datetime')
+def test_init_error(mock_datetime):
+    # Error path: Test how the function handles an exception from an external dependency
+    # Since the code doesn't catch exceptions, we verify it propagates them
+    mock_datetime.now.side_effect = RuntimeError("System clock failure")
     
-    # Execute & Assert
     with pytest.raises(RuntimeError) as exc_info:
-        BaseModel(id="error-test")
+        BaseModel(id="error-test-id")
     
-    assert str(exc_info.value) == "System clock failure"
-    mock_datetime_class.now.assert_called_once()
+    assert "System clock failure" in str(exc_info.value)

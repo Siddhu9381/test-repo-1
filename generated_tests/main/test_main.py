@@ -1,18 +1,7 @@
 import pytest
-from unittest.mock import patch, Mock
+from unittest.mock import patch, MagicMock, call
 
-def demonstrate_absolute_imports():
-    """Placeholder for absolute imports demonstration."""
-    pass
-
-def demonstrate_class_imports():
-    """Placeholder for class imports demonstration."""
-    pass
-
-def demonstrate_method_imports():
-    """Placeholder for method imports demonstration."""
-    pass
-
+# Function to test
 def main():
     """Main function to run all demonstrations."""
     print("\n" + "=" * 60)
@@ -27,55 +16,82 @@ def main():
     print("DEMONSTRATION COMPLETE")
     print("=" * 60)
 
-@patch(f'{__name__}.demonstrate_method_imports')
-@patch(f'{__name__}.demonstrate_class_imports')
-@patch(f'{__name__}.demonstrate_absolute_imports')
-def test_main_success(mock_absolute, mock_class, mock_method):
-    """Test main function happy path ensuring all demonstration functions are executed in order."""
-    # Setup mock return values
-    mock_absolute.return_value = True
-    mock_class.return_value = True
-    mock_method.return_value = True
+# Mock definitions for patch targets
+def demonstrate_absolute_imports(): pass
+def demonstrate_class_imports(): pass
+def demonstrate_method_imports(): pass
 
-    # Execution
+@patch(f"{__name__}.print")
+@patch(f"{__name__}.demonstrate_method_imports")
+@patch(f"{__name__}.demonstrate_class_imports")
+@patch(f"{__name__}.demonstrate_absolute_imports")
+def test_main_success(mock_abs, mock_class, mock_meth, mock_print):
+    """Test the happy path where all demonstrations run successfully in order."""
+    # Setup
+    mock_abs.return_value = None
+    mock_class.return_value = None
+    mock_meth.return_value = None
+
+    # Execute
     main()
 
     # Assertions
-    mock_absolute.assert_called_once()
+    mock_abs.assert_called_once()
     mock_class.assert_called_once()
-    mock_method.assert_called_once()
+    mock_meth.assert_called_once()
     
-    # Verify call order implicitly through the function logic
-    assert mock_absolute.called
-    assert mock_class.called
-    assert mock_method.called
+    # Verify print calls for headers and footers
+    assert mock_print.call_count >= 6
+    mock_print.assert_any_call("=" * 60)
+    mock_print.assert_any_call("PYTHON IMPORT PATTERNS DEMONSTRATION")
+    mock_print.assert_any_call("DEMONSTRATION COMPLETE")
 
-@patch(f'{__name__}.demonstrate_method_imports')
-@patch(f'{__name__}.demonstrate_class_imports')
-@patch(f'{__name__}.demonstrate_absolute_imports')
-def test_main_edge_cases(mock_absolute, mock_class, mock_method):
-    """Test main function with various return types from dependency functions."""
-    # Main ignores return values, so it should handle None or empty structures gracefully
-    mock_absolute.return_value = None
-    mock_class.return_value = {}
-    mock_method.return_value = []
+@patch(f"{__name__}.print")
+@patch(f"{__name__}.demonstrate_method_imports")
+@patch(f"{__name__}.demonstrate_class_imports")
+@patch(f"{__name__}.demonstrate_absolute_imports")
+def test_main_edge_cases(mock_abs, mock_class, mock_meth, mock_print):
+    """Test execution flow consistency even if demonstration functions return unexpected values."""
+    # Setup: Functions returning None or empty values (edge case for void-like functions)
+    mock_abs.return_value = {}
+    mock_class.return_value = []
+    mock_meth.return_value = ""
 
+    # Execute
     main()
 
-    mock_absolute.assert_called_once()
-    mock_class.assert_called_once()
-    mock_method.assert_called_once()
+    # Assertions: Ensure execution order is strictly maintained
+    manager = MagicMock()
+    manager.attach_mock(mock_abs, 'abs')
+    manager.attach_mock(mock_class, 'cls')
+    manager.attach_mock(mock_meth, 'meth')
+    
+    expected_calls = [call.abs(), call.cls(), call.meth()]
+    # Filter only the demonstration calls from the manager
+    actual_calls = [c for c in manager.mock_calls if c[0] in ['abs', 'cls', 'meth']]
+    assert actual_calls == expected_calls, "Functions must be called in the specific order defined in main"
 
-@patch(f'{__name__}.demonstrate_absolute_imports')
-def test_main_error(mock_absolute):
-    """Test main function exception propagation when a dependency fails."""
-    # Setup the mock to raise an error
-    error_message = "Import simulation failed"
-    mock_absolute.side_effect = RuntimeError(error_message)
+@patch(f"{__name__}.print")
+@patch(f"{__name__}.demonstrate_method_imports")
+@patch(f"{__name__}.demonstrate_class_imports")
+@patch(f"{__name__}.demonstrate_absolute_imports")
+def test_main_error(mock_abs, mock_class, mock_meth, mock_print):
+    """Test that an exception in a dependency halts the demonstration and propagates."""
+    # Setup: Simulate a failure in the first demonstration
+    error_message = "Module not found"
+    mock_abs.side_effect = ImportError(error_message)
 
-    # Verify the exception is propagated up
-    with pytest.raises(RuntimeError) as exc_info:
+    # Execute & Assert
+    with pytest.raises(ImportError) as excinfo:
         main()
-
-    assert str(exc_info.value) == error_message
-    mock_absolute.assert_called_once()
+    
+    assert str(excinfo.value) == error_message
+    
+    # Verify subsequent functions were NOT called due to the exception
+    mock_abs.assert_called_once()
+    mock_class.assert_not_called()
+    mock_meth.assert_not_called()
+    
+    # Verify the final "COMPLETE" message was never printed
+    complete_calls = [c for c in mock_print.call_args_list if "DEMONSTRATION COMPLETE" in str(c)]
+    assert len(complete_calls) == 0, "Demonstration should not print completion message on failure"

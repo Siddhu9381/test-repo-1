@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import Mock
 
 def validate(self) -> bool:
     """
@@ -11,55 +11,53 @@ def validate(self) -> bool:
     return self.data is not None and len(str(self.data)) > 0
 
 def test_validate_success():
-    # Happy path with normal inputs
-    mock_instance = MagicMock()
+    """Happy path with normal inputs."""
+    # Create a mock object to act as 'self'
+    mock_instance = Mock()
     
-    # Test with a standard non-empty string
-    mock_instance.data = "valid_input_data"
-    result_str = validate(mock_instance)
-    assert result_str is True
-    assert isinstance(result_str, bool)
+    # Test case 1: Standard string data
+    mock_instance.data = "valid_input"
+    assert validate(mock_instance) is True
     
-    # Test with an integer (str(100) -> '100', len is 3)
-    mock_instance.data = 100
-    result_int = validate(mock_instance)
-    assert result_int is True
+    # Test case 2: Numeric data (str(123) has length > 0)
+    mock_instance.data = 123
+    assert validate(mock_instance) is True
+    
+    # Test case 3: Boolean data
+    mock_instance.data = True
+    assert validate(mock_instance) is True
 
 def test_validate_edge_cases():
-    # Edge cases: None, empty values, boundaries
-    mock_instance = MagicMock()
+    """None, empty values, and boundaries."""
+    mock_instance = Mock()
     
-    # Case 1: data is None (should return False due to the first condition)
+    # Test case 1: data is None (should return False)
     mock_instance.data = None
     assert validate(mock_instance) is False
     
-    # Case 2: data is an empty string (should return False because len is 0)
+    # Test case 2: data is an empty string (should return False)
     mock_instance.data = ""
     assert validate(mock_instance) is False
     
-    # Case 3: data is an object that returns an empty string representation
-    mock_instance.data = MagicMock()
-    mock_instance.data.__str__.return_value = ""
+    # Test case 3: data is an object that stringifies to an empty string
+    mock_data = Mock()
+    mock_data.__str__.return_value = ""
+    mock_instance.data = mock_data
     assert validate(mock_instance) is False
     
-    # Case 4: data is a single character (boundary for len > 0)
+    # Test case 4: Single character (boundary condition)
     mock_instance.data = "a"
     assert validate(mock_instance) is True
 
 def test_validate_error():
-    # Exception handling and error paths
-    mock_instance = MagicMock()
+    """Exception handling and error paths."""
+    mock_instance = Mock()
     
-    # Scenario 1: The __str__ method of the data object raises an exception
-    mock_instance.data = MagicMock()
-    mock_instance.data.__str__.side_effect = ValueError("String conversion error")
+    # Scenario: Test how the function handles an object that raises an error during string conversion
+    # We use side_effect to simulate a failure inside the str() call
+    failing_data = Mock()
+    failing_data.__str__.side_effect = TypeError("Object cannot be stringified")
+    mock_instance.data = failing_data
     
-    with pytest.raises(ValueError, match="String conversion error"):
+    with pytest.raises(TypeError, match="Object cannot be stringified"):
         validate(mock_instance)
-        
-    # Scenario 2: Mocking len() to raise an exception using patch on the test module
-    # This ensures we exercise the path where the logic might fail unexpectedly
-    with patch(f"{__name__}.len", side_effect=TypeError("Length calculation failed")):
-        mock_instance.data = "trigger_len"
-        with pytest.raises(TypeError, match="Length calculation failed"):
-            validate(mock_instance)

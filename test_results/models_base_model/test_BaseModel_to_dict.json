@@ -11,5 +11,5 @@
   "failed_tests": [
     "generated_tests/models_base_model/test_BaseModel_to_dict.py::test_to_dict_error"
   ],
-  "duration": 9.118241
+  "duration": 2.594192
 }

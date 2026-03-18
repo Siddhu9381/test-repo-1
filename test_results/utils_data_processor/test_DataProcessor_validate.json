@@ -11,5 +11,5 @@
   "failed_tests": [
     "generated_tests/utils_data_processor/test_DataProcessor_validate.py::test_validate_error"
   ],
-  "duration": 9.118241
+  "duration": 2.594192
 }
